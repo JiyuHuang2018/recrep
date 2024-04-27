@@ -9,7 +9,7 @@ CREATED: 2014-03-25 02:06:52 by Dawen Liang <dliang@ee.columbia.edu>
 import sys
 import numpy as np
 from scipy import sparse, special
-import weave
+
 
 from sklearn.base import BaseEstimator, TransformerMixin
 
@@ -141,7 +141,7 @@ class PoissonMF(BaseEstimator, TransformerMixin):
     def _update(self, X, rows, cols, update_theta=True, vad=None):
         # alternating between update latent components and weights
         old_pll = -np.inf
-        for i in xrange(self.max_iter):
+        for i in range(self.max_iter):
             if update_theta:
                 self._update_users(X, rows, cols)
             self._update_items(X, rows, cols)
@@ -189,21 +189,22 @@ class PoissonMF(BaseEstimator, TransformerMixin):
 
 
 def _inner(beta, theta, rows, cols):
-    n_ratings = rows.size
-    n_components, n_users = theta.shape
-    data = np.empty(n_ratings, dtype=np.float32)
-    code = r"""
-    for (int i = 0; i < n_ratings; i++) {
-       data[i] = 0.0;
-       for (int j = 0; j < n_components; j++) {
-           data[i] += beta[rows[i] * n_components + j] * theta[j * n_users + cols[i]];
-       }
-    }
-    """
-    weave.inline(code, ['data', 'theta', 'beta', 'rows', 'cols',
-                        'n_ratings', 'n_components', 'n_users'])
+    '''
+    Efficiently compute the matrix product for specified row and col indices
+    using pre-computed expectations of theta and beta in log-space.
+    '''
+    n_ratings = len(rows)
+    n_components = theta.shape[0]
+    n_users = theta.shape[1]
+    data = np.zeros(n_ratings, dtype=np.float32)
+    
+    for i in range(n_ratings):
+        j_indices = np.arange(n_components)
+        beta_sub = beta[rows[i], :]
+        theta_sub = theta[:, cols[i]]
+        data[i] = np.sum(np.exp(beta_sub) * np.exp(theta_sub))
+    
     return data
-
 
 def _compute_expectations(alpha, beta):
     '''

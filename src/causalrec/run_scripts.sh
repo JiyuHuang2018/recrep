@@ -8,4 +8,4 @@
 source /proj/sml_netapp/opt/anaconda2-4.2.0/etc/profile.d/conda.sh
 conda activate py2 
 
-python -u ${MODELCODEPY} -ddir ${DATADIR} -cdir ${LOCALFITDIR} -odir ${OUTDIR} -odim ${OUTDIM} -cdim ${CAUDIM} -th ${THOLD} -M ${BATCHSIZE} -nitr ${NITER} -pU ${PRIORU} -pV ${PRIORV} -alpha ${ALPHA} -binary ${BINARY}
+python -u src/causalrec/${MODELCODEPY} -ddir ${DATADIR} -cdir ${LOCALFITDIR} -odir ${OUTDIR} -odim ${OUTDIM} -cdim ${CAUDIM} -th ${THOLD} -M ${BATCHSIZE} -nitr ${NITER} -pU ${PRIORU} -pV ${PRIORV} -alpha ${ALPHA} -binary ${BINARY}

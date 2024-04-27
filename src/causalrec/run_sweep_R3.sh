@@ -22,7 +22,11 @@ SUFFIX=".py"
 
 export DATA="R3"
 
-
+run_model() {
+    echo "Running model with configuration: $NAME"
+    # Assuming run_scripts.sh calls a Python script or similar
+    ./src/causalrec/run_scripts.sh
+}
 
 for MODELCODEPYi in ${MODELCODEPY_SWEEP}; do
     export MODELCODEPY=${MODELCODEPYi}${SUFFIX}
@@ -50,11 +54,8 @@ for MODELCODEPYi in ${MODELCODEPY_SWEEP}; do
 										    	export ALPHA=${ALPHAi}
 										    	for BINARYi in ${BINARY_SWEEP}; do
 										    		export BINARY=${BINARYi}
-										            NAME=data_${DATADIRi}_model_${MODELCODEPYi}_odim_${OUTDIM}_cdim_${CAUDIM}_th_${THOLD}_M_${BATCHSIZE}_nitr_${NITER}_pU_${PRIORU}_pV_${PRIORV}_alpha_${ALPHA}_binary_${BINARY}
-										            echo ${NAME}
-										            sbatch --job-name=${NAME} \
-										            --output=${NAME}.out \
-										            run_scripts.sh
+                                                    NAME="data_${DATADIRi}_model_${MODELCODEPYi}_odim_${OUTDIM}_cdim_${CAUDIM}_th_${THOLD}_M_${BATCHSIZE}_nitr_${NITER}_pU_${PRIORU}_pV_${PRIORV}_alpha_${ALPHA}_binary_${BINARY}"
+                                                    run_model
 										        done
 	       									done
 	    								done
@@ -119,11 +120,9 @@ for MODELCODEPYi in ${MODELCODEPY_SWEEP}; do
 										    	export ALPHA=${ALPHAi}
 										    	for BINARYi in ${BINARY_SWEEP}; do
 										    		export BINARY=${BINARYi}
-										            NAME=data_${DATADIRi}_model_${MODELCODEPYi}_odim_${OUTDIM}_cdim_${CAUDIM}_th_${THOLD}_M_${BATCHSIZE}_nitr_${NITER}_pU_${PRIORU}_pV_${PRIORV}_alpha_${ALPHA}_binary_${BINARY}
-										            echo ${NAME}
-										            sbatch --job-name=${NAME} \
-										            --output=${NAME}.out \
-										            run_scripts.sh
+										            export BINARY=${BINARYi}
+                                                    NAME="data_${DATADIRi}_model_${MODELCODEPYi}_odim_${OUTDIM}_cdim_${CAUDIM}_th_${THOLD}_M_${BATCHSIZE}_nitr_${NITER}_pU_${PRIORU}_pV_${PRIORV}_alpha_${ALPHA}_binary_${BINARY}"
+                                                    run_model
 										        done
 	       									done
 	    								done

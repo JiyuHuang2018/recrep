@@ -53,19 +53,18 @@ from scipy import sparse, stats
 # In[3]:
 
 
-DATA_DIR = '../dat/raw/Webscope_R3'
+DATA_DIR = 'dat/raw/Webscope_R3/'
 
 
 # In[4]:
 
 
-OUT_DATA_DIR = '../dat/proc/R3_wg'
+OUT_DATA_DIR = 'dat/proc/R3_wg/'
 
 
 # ## R3
 
 # In[5]:
-
 
 tr_vd_data = pd.read_csv(os.path.join(DATA_DIR, 'ydata-ymusic-rating-study-v1_0-train.txt'), sep="\t", header=None, 
                        names=['userId', 'songId', 'rating'],engine="python")
@@ -135,8 +134,8 @@ item_popularity = get_count(tr_vd_data, 'songId')
 # In[11]:
 
 
-unique_uid = user_activity.index
-unique_sid = item_popularity.index
+unique_uid = user_activity.index +1
+unique_sid = item_popularity.index +1
 
 
 # In[12]:

@@ -345,9 +345,9 @@ if __name__ == '__main__':
             
                 
             # np.savetxt(OUT_DATA_DIR + '/'+ model_name + '_bin'+str(binary)+'_cauk0_'+str(caudim)\
-                +'outK'+str(outdim)+"_nitr"+str(n_iter)+"_batch"+str(M)+\
-                "_thold"+str(thold)+"_pU"+str(args.priorU)+"_pV"+str(args.priorV)+\
-                "_alpha"+str(args.alpha)+"_cas_vadU.csv", U_vadout)
+            #    +'outK'+str(outdim)+"_nitr"+str(n_iter)+"_batch"+str(M)+\
+            #    "_thold"+str(thold)+"_pU"+str(args.priorU)+"_pV"+str(args.priorV)+\
+            #    "_alpha"+str(args.alpha)+"_cas_vadU.csv", U_vadout)
 
 
             
