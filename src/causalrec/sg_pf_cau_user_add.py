@@ -167,318 +167,318 @@ if __name__ == '__main__':
             cau = exp_to_imp(train_data)
 
             tf.reset_default_graph()
-            sess = tf.InteractiveSession()
+            with tf.Session() as sess:
 
-            idx_ph = tf.placeholder(tf.int32, M)
-            cau_ph = tf.placeholder(tf.float32, [M, N])
-            sd_ph = tf.placeholder(tf.float32, [M, N])
-            reconstr_cau_ph = tf.placeholder(tf.float32, [M, N])
+                idx_ph = tf.placeholder(tf.int32, M)
+                cau_ph = tf.placeholder(tf.float32, [M, N])
+                sd_ph = tf.placeholder(tf.float32, [M, N])
+                reconstr_cau_ph = tf.placeholder(tf.float32, [M, N])
 
-            U = Gamma(0.3*tf.ones([M, K]), 0.3*tf.ones([M, K]))
-            V = Gamma(0.3*tf.ones([N, K]), 0.3*tf.ones([N, K]))
-            gamma = Gamma(tf.ones([M, 1]), tf.ones([M, 1]))
-            beta0 = Gamma(0.3*tf.ones([1, 1]), 0.3*tf.ones([1, 1]))
-            
-            x = Poisson(tf.add(tf.matmul(U, V, transpose_b=True),\
-                tf.multiply(tf.matmul(gamma, tf.ones([1, N])), \
-                    reconstr_cau_ph)) + beta0)
-
-
-            qU_variables = [tf.Variable(tf.random_uniform([D, K])), \
-                           tf.Variable(tf.random_uniform([D, K]))]
-
-            qU = PointMass(params=tf.nn.softplus(tf.gather(qU_variables[0], idx_ph)))
-
-
-            qV_variables = [tf.Variable(tf.random_uniform([N, K])), \
-                           tf.Variable(tf.random_uniform([N, K]))]
-
-            qV = PointMass(params=tf.nn.softplus(qV_variables[0]))
-
-            qgamma_variables = [tf.Variable(tf.random_uniform([D, 1])), \
-                           tf.Variable(tf.nn.softplus(tf.random_uniform([D, 1])))]
-
-            qgamma = PointMass(params=tf.nn.softplus(tf.gather(qgamma_variables[0], idx_ph)))
-
-            
-            qbeta0_variables = [tf.Variable(tf.random_uniform([1, 1])), \
-                           tf.Variable(tf.nn.softplus(tf.random_uniform([1, 1])))]
-
-            qbeta0 = PointMass(params=tf.nn.softplus(qbeta0_variables[0]))
-
-            x_ph = tf.placeholder(tf.float32, [M, N])
-
-            optimizer = tf.train.RMSPropOptimizer(5e-5)
-        
-            scale_factor = float(D) / M
-
-            inference_U = ed.MAP({U: qU}, \
-                data={x: x_ph, V: qV, gamma: qgamma, beta0: qbeta0})
-            inference_V = ed.MAP({V: qV}, \
-                data={x: x_ph, U: qU, gamma: qgamma, beta0: qbeta0})
-            inference_gamma = ed.MAP({gamma: qgamma}, \
-                data={x: x_ph, V: qV, U: qU, beta0: qbeta0})
-            inference_beta0 = ed.MAP({beta0: qbeta0}, \
-                data={x: x_ph, V: qV, U: qU, gamma: qgamma})
-
-            inference_U.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
-                                 var_list=qU_variables, optimizer=optimizer)
-            inference_V.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
-                                 var_list=qV_variables, n_iter=n_iter, optimizer=optimizer)
-            inference_gamma.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
-                                 var_list=qgamma_variables, optimizer=optimizer)
-            inference_beta0.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
-                                 var_list=qbeta0_variables, optimizer=optimizer)        
-
-            tf.global_variables_initializer().run()
-            
-            loss = np.empty(inference_V.n_iter, dtype=np.float32)
-            
-            for j in range(inference_V.n_iter):
-                x_batch, idx_batch = next_batch(train_data, M)
-                cau_batch = cau[idx_batch,:]
-                weights_batch = weights[idx_batch,:]
-                reconstr_cau_batch = reconstr_cau_train[idx_batch,:]
-
-                x_batch = x_batch.todense().astype('int')
-                cau_batch = cau_batch.todense()
-                weights_batch = weights_batch.todense()
-                sd_batch = 1./np.sqrt(1+weights_batch)
-
-                info_dict = inference_V.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
-                    reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, sd_ph: sd_batch})
-                inference_beta0.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
-                    reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, sd_ph: sd_batch})
-                inference_gamma.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
-                    reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, sd_ph: sd_batch})
-                inference_U.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
-                    reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, sd_ph: sd_batch})
-
-                inference_V.print_progress(info_dict)
-
-
-                loss[j] = info_dict["loss"]
+                U = Gamma(0.3*tf.ones([M, K]), 0.3*tf.ones([M, K]))
+                V = Gamma(0.3*tf.ones([N, K]), 0.3*tf.ones([N, K]))
+                gamma = Gamma(tf.ones([M, 1]), tf.ones([M, 1]))
+                beta0 = Gamma(0.3*tf.ones([1, 1]), 0.3*tf.ones([1, 1]))
                 
+                x = Poisson(tf.add(tf.matmul(U, V, transpose_b=True),\
+                    tf.multiply(tf.matmul(gamma, tf.ones([1, N])), \
+                        reconstr_cau_ph)) + beta0)
 
-            V_out = tf.nn.softplus(qV_variables[0]).eval()
-            U_trainout = tf.nn.softplus(qU_variables[0]).eval()
-            gamma_trainout = tf.nn.softplus(qgamma_variables[0]).eval()
-            beta0_out = tf.nn.softplus(qbeta0_variables[0]).eval()
-            
+
+                qU_variables = [tf.Variable(tf.random_uniform([D, K])), \
+                            tf.Variable(tf.random_uniform([D, K]))]
+
+                qU = PointMass(params=tf.nn.softplus(tf.gather(qU_variables[0], idx_ph)))
+
+
+                qV_variables = [tf.Variable(tf.random_uniform([N, K])), \
+                            tf.Variable(tf.random_uniform([N, K]))]
+
+                qV = PointMass(params=tf.nn.softplus(qV_variables[0]))
+
+                qgamma_variables = [tf.Variable(tf.random_uniform([D, 1])), \
+                            tf.Variable(tf.nn.softplus(tf.random_uniform([D, 1])))]
+
+                qgamma = PointMass(params=tf.nn.softplus(tf.gather(qgamma_variables[0], idx_ph)))
+
                 
+                qbeta0_variables = [tf.Variable(tf.random_uniform([1, 1])), \
+                            tf.Variable(tf.nn.softplus(tf.random_uniform([1, 1])))]
 
+                qbeta0 = PointMass(params=tf.nn.softplus(qbeta0_variables[0]))
+
+                x_ph = tf.placeholder(tf.float32, [M, N])
+
+                optimizer = tf.train.RMSPropOptimizer(5e-5)
             
-            # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_trainU.csv", U_trainout)
-            # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_V.csv", V_out)
-            # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_gamma.csv", gamma_trainout)
-            # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_beta0.csv", beta0_out)
+                scale_factor = float(D) / M
+
+                inference_U = ed.MAP({U: qU}, \
+                    data={x: x_ph, V: qV, gamma: qgamma, beta0: qbeta0})
+                inference_V = ed.MAP({V: qV}, \
+                    data={x: x_ph, U: qU, gamma: qgamma, beta0: qbeta0})
+                inference_gamma = ed.MAP({gamma: qgamma}, \
+                    data={x: x_ph, V: qV, U: qU, beta0: qbeta0})
+                inference_beta0 = ed.MAP({beta0: qbeta0}, \
+                    data={x: x_ph, V: qV, U: qU, gamma: qgamma})
+
+                inference_U.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
+                                    var_list=qU_variables, optimizer=optimizer)
+                inference_V.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
+                                    var_list=qV_variables, n_iter=n_iter, optimizer=optimizer)
+                inference_gamma.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
+                                    var_list=qgamma_variables, optimizer=optimizer)
+                inference_beta0.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
+                                    var_list=qbeta0_variables, optimizer=optimizer)        
+
+                tf.global_variables_initializer().run()
+                
+                loss = np.empty(inference_V.n_iter, dtype=np.float32)
+                
+                for j in range(inference_V.n_iter):
+                    x_batch, idx_batch = next_batch(train_data, M)
+                    cau_batch = cau[idx_batch,:]
+                    weights_batch = weights[idx_batch,:]
+                    reconstr_cau_batch = reconstr_cau_train[idx_batch,:]
+
+                    x_batch = x_batch.todense().astype('int')
+                    cau_batch = cau_batch.todense()
+                    weights_batch = weights_batch.todense()
+                    sd_batch = 1./np.sqrt(1+weights_batch)
+
+                    info_dict = inference_V.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
+                        reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, sd_ph: sd_batch})
+                    inference_beta0.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
+                        reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, sd_ph: sd_batch})
+                    inference_gamma.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
+                        reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, sd_ph: sd_batch})
+                    inference_U.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
+                        reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, sd_ph: sd_batch})
+
+                    inference_V.print_progress(info_dict)
+
+
+                    loss[j] = info_dict["loss"]
+                    
+
+                V_out = tf.nn.softplus(qV_variables[0]).eval()
+                U_trainout = tf.nn.softplus(qU_variables[0]).eval()
+                gamma_trainout = tf.nn.softplus(qgamma_variables[0]).eval()
+                beta0_out = tf.nn.softplus(qbeta0_variables[0]).eval()
+                
+                    
+
+                
+                # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_trainU.csv", U_trainout)
+                # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_V.csv", V_out)
+                # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_gamma.csv", gamma_trainout)
+                # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_beta0.csv", beta0_out)
 
 
 
-            # now estimate the user vector on new validation users 
-            D = vad_data_tr.shape[0]
-            weights = vad_data_tr * alpha
-            cau = exp_to_imp(vad_data_tr)
+                # now estimate the user vector on new validation users 
+                D = vad_data_tr.shape[0]
+                weights = vad_data_tr * alpha
+                cau = exp_to_imp(vad_data_tr)
 
-            U = np.loadtxt(CAUSEFIT_DIR + '/cause_pmf_k'+str(dim)+'_vadU.csv')
-            V = np.loadtxt(CAUSEFIT_DIR + '/cause_pmf_k'+str(dim)+'_V.csv')
-            U = (np.atleast_2d(U.T).T)
-            V = (np.atleast_2d(V.T).T)
-            reconstr_cau_vad = U.dot(V.T)
+                U = np.loadtxt(CAUSEFIT_DIR + '/cause_pmf_k'+str(dim)+'_vadU.csv')
+                V = np.loadtxt(CAUSEFIT_DIR + '/cause_pmf_k'+str(dim)+'_V.csv')
+                U = (np.atleast_2d(U.T).T)
+                V = (np.atleast_2d(V.T).T)
+                reconstr_cau_vad = U.dot(V.T)
 
             tf.reset_default_graph()
-            sess = tf.InteractiveSession()
+            with tf.Session() as sess:
 
-            idx_ph = tf.placeholder(tf.int32, M)
-            cau_ph = tf.placeholder(tf.float32, [M, N])
-            sd_ph = tf.placeholder(tf.float32, [M, N])
-            reconstr_cau_ph = tf.placeholder(tf.float32, [M, N])
+                idx_ph = tf.placeholder(tf.int32, M)
+                cau_ph = tf.placeholder(tf.float32, [M, N])
+                sd_ph = tf.placeholder(tf.float32, [M, N])
+                reconstr_cau_ph = tf.placeholder(tf.float32, [M, N])
 
-            U = Gamma(0.3*tf.ones([M, K]), 0.3*tf.ones([M, K]))
-            V = tf.placeholder(tf.float32, [N, K])
-            gamma = Gamma(tf.ones([M, 1]), tf.ones([M, 1]))
-            beta0 = tf.placeholder(tf.float32, [1, 1])
+                U = Gamma(0.3*tf.ones([M, K]), 0.3*tf.ones([M, K]))
+                V = tf.placeholder(tf.float32, [N, K])
+                gamma = Gamma(tf.ones([M, 1]), tf.ones([M, 1]))
+                beta0 = tf.placeholder(tf.float32, [1, 1])
 
-            x = Poisson(tf.add(tf.matmul(U, V, transpose_b=True),\
-                tf.multiply(tf.matmul(gamma, tf.ones([1, N])), \
-                    reconstr_cau_ph)) + beta0)
+                x = Poisson(tf.add(tf.matmul(U, V, transpose_b=True),\
+                    tf.multiply(tf.matmul(gamma, tf.ones([1, N])), \
+                        reconstr_cau_ph)) + beta0)
 
-            qU_variables = [tf.Variable(tf.random_uniform([D, K])), \
-                           tf.Variable(tf.random_uniform([D, K]))]
+                qU_variables = [tf.Variable(tf.random_uniform([D, K])), \
+                            tf.Variable(tf.random_uniform([D, K]))]
 
-            qU = PointMass(params=tf.nn.softplus(tf.gather(qU_variables[0], idx_ph)))
-
-
-            qgamma_variables = [tf.Variable(tf.random_uniform([D, 1])), \
-                           tf.Variable(tf.nn.softplus(tf.random_uniform([D, 1])))]
-
-            qgamma = PointMass(params=tf.nn.softplus(tf.gather(qgamma_variables[0], idx_ph)))
-            
-            x_ph = tf.placeholder(tf.float32, [M, N])
+                qU = PointMass(params=tf.nn.softplus(tf.gather(qU_variables[0], idx_ph)))
 
 
-            scale_factor = float(D) / M
+                qgamma_variables = [tf.Variable(tf.random_uniform([D, 1])), \
+                            tf.Variable(tf.nn.softplus(tf.random_uniform([D, 1])))]
 
-            inference_U = ed.MAP({U: qU}, \
-                data={x: x_ph, gamma: qgamma})
-            inference_gamma = ed.MAP({gamma: qgamma}, \
-                data={x: x_ph, U: qU})
-
-            inference_U.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
-                                 var_list=qU_variables, n_iter=n_iter, optimizer=optimizer)
-            inference_gamma.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
-                                 var_list=qgamma_variables, optimizer=optimizer)
-
-            tf.global_variables_initializer().run()
-
-            loss = np.empty(inference_U.n_iter, dtype=np.float32)
-            
-            for j in range(inference_U.n_iter):
-                x_batch, idx_batch = next_batch(vad_data_tr, M)
-                cau_batch = cau[idx_batch,:]
-                weights_batch = weights[idx_batch,:]
-                reconstr_cau_batch = reconstr_cau_vad[idx_batch,:]
-
-                x_batch = x_batch.todense().astype('int')
-                cau_batch = cau_batch.todense()
-                weights_batch = weights_batch.todense()
-                sd_batch = 1./np.sqrt(1+weights_batch)
-
-                info_dict = inference_U.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
-                                              reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, \
-                                              sd_ph: sd_batch, V: V_out, beta0: beta0_out})
-                inference_gamma.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
-                                              reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, \
-                                              sd_ph: sd_batch, V: V_out, beta0: beta0_out})
-
-                inference_U.print_progress(info_dict)
-
-                loss[j] = info_dict["loss"]
+                qgamma = PointMass(params=tf.nn.softplus(tf.gather(qgamma_variables[0], idx_ph)))
                 
+                x_ph = tf.placeholder(tf.float32, [M, N])
 
-            U_vadout = tf.nn.softplus(qU_variables[0]).eval()
-            gamma_vadout = tf.nn.softplus(qgamma_variables[0]).eval()
-            
+
+                scale_factor = float(D) / M
+
+                inference_U = ed.MAP({U: qU}, \
+                    data={x: x_ph, gamma: qgamma})
+                inference_gamma = ed.MAP({gamma: qgamma}, \
+                    data={x: x_ph, U: qU})
+
+                inference_U.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
+                                    var_list=qU_variables, n_iter=n_iter, optimizer=optimizer)
+                inference_gamma.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
+                                    var_list=qgamma_variables, optimizer=optimizer)
+
+                tf.global_variables_initializer().run()
+
+                loss = np.empty(inference_U.n_iter, dtype=np.float32)
                 
+                for j in range(inference_U.n_iter):
+                    x_batch, idx_batch = next_batch(vad_data_tr, M)
+                    cau_batch = cau[idx_batch,:]
+                    weights_batch = weights[idx_batch,:]
+                    reconstr_cau_batch = reconstr_cau_vad[idx_batch,:]
 
-            
-            # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_vadU.csv", U_vadout)
-            # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_vadgamma.csv", gamma_vadout)
+                    x_batch = x_batch.todense().astype('int')
+                    cau_batch = cau_batch.todense()
+                    weights_batch = weights_batch.todense()
+                    sd_batch = 1./np.sqrt(1+weights_batch)
+
+                    info_dict = inference_U.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
+                                                reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, \
+                                                sd_ph: sd_batch, V: V_out, beta0: beta0_out})
+                    inference_gamma.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
+                                                reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, \
+                                                sd_ph: sd_batch, V: V_out, beta0: beta0_out})
+
+                    inference_U.print_progress(info_dict)
+
+                    loss[j] = info_dict["loss"]
+                    
+
+                U_vadout = tf.nn.softplus(qU_variables[0]).eval()
+                gamma_vadout = tf.nn.softplus(qgamma_variables[0]).eval()
+                
+                    
+
+                
+                # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_vadU.csv", U_vadout)
+                # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_vadgamma.csv", gamma_vadout)
 
 
 
-            # now estimate the user vector on new test users 
-            D = test_data_tr.shape[0]
-            weights = test_data_tr * alpha
-            cau = exp_to_imp(test_data_tr)
+                # now estimate the user vector on new test users 
+                D = test_data_tr.shape[0]
+                weights = test_data_tr * alpha
+                cau = exp_to_imp(test_data_tr)
 
-            U = np.loadtxt(CAUSEFIT_DIR + '/cause_pmf_k'+str(dim)+'_testU.csv')
-            V = np.loadtxt(CAUSEFIT_DIR + '/cause_pmf_k'+str(dim)+'_V.csv')
-            U = (np.atleast_2d(U.T).T)
-            V = (np.atleast_2d(V.T).T)
-            reconstr_cau_test = U.dot(V.T)
+                U = np.loadtxt(CAUSEFIT_DIR + '/cause_pmf_k'+str(dim)+'_testU.csv')
+                V = np.loadtxt(CAUSEFIT_DIR + '/cause_pmf_k'+str(dim)+'_V.csv')
+                U = (np.atleast_2d(U.T).T)
+                V = (np.atleast_2d(V.T).T)
+                reconstr_cau_test = U.dot(V.T)
 
             tf.reset_default_graph()
-            sess = tf.InteractiveSession()
+            with tf.Session() as sess:
 
-            idx_ph = tf.placeholder(tf.int32, M)
-            cau_ph = tf.placeholder(tf.float32, [M, N])
-            sd_ph = tf.placeholder(tf.float32, [M, N])
-            reconstr_cau_ph = tf.placeholder(tf.float32, [M, N])
+                idx_ph = tf.placeholder(tf.int32, M)
+                cau_ph = tf.placeholder(tf.float32, [M, N])
+                sd_ph = tf.placeholder(tf.float32, [M, N])
+                reconstr_cau_ph = tf.placeholder(tf.float32, [M, N])
 
-            U = Gamma(0.3*tf.ones([M, K]), 0.3*tf.ones([M, K]))
-            V = tf.placeholder(tf.float32, [N, K])
-            gamma = Gamma(tf.ones([M, 1]), tf.ones([M, 1]))
-            beta0 = tf.placeholder(tf.float32, [1, 1])
+                U = Gamma(0.3*tf.ones([M, K]), 0.3*tf.ones([M, K]))
+                V = tf.placeholder(tf.float32, [N, K])
+                gamma = Gamma(tf.ones([M, 1]), tf.ones([M, 1]))
+                beta0 = tf.placeholder(tf.float32, [1, 1])
 
-            x = Poisson(tf.add(tf.matmul(U, V, transpose_b=True),\
-                tf.multiply(tf.matmul(gamma, tf.ones([1, N])), \
-                    reconstr_cau_ph)) + beta0)
+                x = Poisson(tf.add(tf.matmul(U, V, transpose_b=True),\
+                    tf.multiply(tf.matmul(gamma, tf.ones([1, N])), \
+                        reconstr_cau_ph)) + beta0)
 
-            qU_variables = [tf.Variable(tf.random_uniform([D, K])), \
-                           tf.Variable(tf.random_uniform([D, K]))]
+                qU_variables = [tf.Variable(tf.random_uniform([D, K])), \
+                            tf.Variable(tf.random_uniform([D, K]))]
 
-            qU = PointMass(params=tf.nn.softplus(tf.gather(qU_variables[0], idx_ph)))
-
-
-            qgamma_variables = [tf.Variable(tf.random_uniform([D, 1])), \
-                           tf.Variable(tf.nn.softplus(tf.random_uniform([D, 1])))]
-
-            qgamma = PointMass(params=tf.nn.softplus(tf.gather(qgamma_variables[0], idx_ph)))
-            
-            x_ph = tf.placeholder(tf.float32, [M, N])
+                qU = PointMass(params=tf.nn.softplus(tf.gather(qU_variables[0], idx_ph)))
 
 
-            scale_factor = float(D) / M
+                qgamma_variables = [tf.Variable(tf.random_uniform([D, 1])), \
+                            tf.Variable(tf.nn.softplus(tf.random_uniform([D, 1])))]
 
-            inference_U = ed.MAP({U: qU}, \
-                data={x: x_ph, gamma: qgamma})
-            inference_gamma = ed.MAP({gamma: qgamma}, \
-                data={x: x_ph, U: qU})
-
-            inference_U.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
-                                 var_list=qU_variables, n_iter=n_iter, optimizer=optimizer)
-            inference_gamma.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
-                                 var_list=qgamma_variables, optimizer=optimizer)
-
-            tf.global_variables_initializer().run()
-
-            loss = np.empty(inference_U.n_iter, dtype=np.float32)
-            
-            for j in range(inference_U.n_iter):
-                x_batch, idx_batch = next_batch(test_data_tr, M)
-                cau_batch = cau[idx_batch,:]
-                weights_batch = weights[idx_batch,:]
-                reconstr_cau_batch = reconstr_cau_test[idx_batch,:]
-
-                x_batch = x_batch.todense().astype('int')
-                cau_batch = cau_batch.todense()
-                weights_batch = weights_batch.todense()
-                sd_batch = 1./np.sqrt(1+weights_batch)
-
-                info_dict = inference_U.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
-                                              reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, \
-                                              sd_ph: sd_batch, V: V_out, beta0: beta0_out})
-                inference_gamma.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
-                                              reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, \
-                                              sd_ph: sd_batch, V: V_out, beta0: beta0_out})
-
-                inference_U.print_progress(info_dict)
-
-                loss[j] = info_dict["loss"]
+                qgamma = PointMass(params=tf.nn.softplus(tf.gather(qgamma_variables[0], idx_ph)))
                 
+                x_ph = tf.placeholder(tf.float32, [M, N])
 
-            U_testout = tf.nn.softplus(qU_variables[0]).eval()
-            gamma_testout = tf.nn.softplus(qgamma_variables[0]).eval()
-            
+
+                scale_factor = float(D) / M
+
+                inference_U = ed.MAP({U: qU}, \
+                    data={x: x_ph, gamma: qgamma})
+                inference_gamma = ed.MAP({gamma: qgamma}, \
+                    data={x: x_ph, U: qU})
+
+                inference_U.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
+                                    var_list=qU_variables, n_iter=n_iter, optimizer=optimizer)
+                inference_gamma.initialize(scale={x: scale_factor, U: scale_factor, gamma: scale_factor},
+                                    var_list=qgamma_variables, optimizer=optimizer)
+
+                tf.global_variables_initializer().run()
+
+                loss = np.empty(inference_U.n_iter, dtype=np.float32)
                 
+                for j in range(inference_U.n_iter):
+                    x_batch, idx_batch = next_batch(test_data_tr, M)
+                    cau_batch = cau[idx_batch,:]
+                    weights_batch = weights[idx_batch,:]
+                    reconstr_cau_batch = reconstr_cau_test[idx_batch,:]
 
-            
-            # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_testU.csv", U_testout)
-            # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_testgamma.csv", gamma_testout)
+                    x_batch = x_batch.todense().astype('int')
+                    cau_batch = cau_batch.todense()
+                    weights_batch = weights_batch.todense()
+                    sd_batch = 1./np.sqrt(1+weights_batch)
+
+                    info_dict = inference_U.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
+                                                reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, \
+                                                sd_ph: sd_batch, V: V_out, beta0: beta0_out})
+                    inference_gamma.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
+                                                reconstr_cau_ph: reconstr_cau_batch, cau_ph: cau_batch, \
+                                                sd_ph: sd_batch, V: V_out, beta0: beta0_out})
+
+                    inference_U.print_progress(info_dict)
+
+                    loss[j] = info_dict["loss"]
+                    
+
+                U_testout = tf.nn.softplus(qU_variables[0]).eval()
+                gamma_testout = tf.nn.softplus(qgamma_variables[0]).eval()
+                
+                    
+
+                
+                # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_testU.csv", U_testout)
+                # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_testgamma.csv", gamma_testout)
 
 
 
-            pred_train = sparse.csr_matrix(U_trainout.dot(V_out.T) + \
-                                     np.multiply(np.repeat(gamma_trainout, reconstr_cau_train.shape[1], axis=1), \
-                                                 reconstr_cau_train) + beta0_out)
-            pred_vad = sparse.csr_matrix(U_vadout.dot(V_out.T) + \
-                                     np.multiply(np.repeat(gamma_vadout, reconstr_cau_vad.shape[1], axis=1), \
-                                                 reconstr_cau_vad) + beta0_out)
-            pred_test = sparse.csr_matrix(U_testout.dot(V_out.T) + \
-                                     np.multiply(np.repeat(gamma_testout, reconstr_cau_test.shape[1], axis=1), \
-                                                 reconstr_cau_test) + beta0_out)
+                pred_train = sparse.csr_matrix(U_trainout.dot(V_out.T) + \
+                                        np.multiply(np.repeat(gamma_trainout, reconstr_cau_train.shape[1], axis=1), \
+                                                    reconstr_cau_train) + beta0_out)
+                pred_vad = sparse.csr_matrix(U_vadout.dot(V_out.T) + \
+                                        np.multiply(np.repeat(gamma_vadout, reconstr_cau_vad.shape[1], axis=1), \
+                                                    reconstr_cau_vad) + beta0_out)
+                pred_test = sparse.csr_matrix(U_testout.dot(V_out.T) + \
+                                        np.multiply(np.repeat(gamma_testout, reconstr_cau_test.shape[1], axis=1), \
+                                                    reconstr_cau_test) + beta0_out)
 
-            pred_train = pred_train.todense()
-            pred_vad = pred_vad.todense()
-            pred_test = pred_test.todense()
+                pred_train = pred_train.todense()
+                pred_vad = pred_vad.todense()
+                pred_test = pred_test.todense()
 
-            all_metric_holders = sg_eval_acc_metrics_update_i(all_metric_holders, i, \
-                pred_train, pred_vad, pred_test, \
-                train_data, \
-                vad_data_tr, vad_data_te, \
-                test_data_tr, test_data_te, \
-                ks, thold)
+                all_metric_holders = sg_eval_acc_metrics_update_i(all_metric_holders, i, \
+                    pred_train, pred_vad, pred_test, \
+                    train_data, \
+                    vad_data_tr, vad_data_te, \
+                    test_data_tr, test_data_te, \
+                    ks, thold)
 
     out_df = save_eval_metrics(all_metric_holders, model_name, outdims, all_params, ks)
         
