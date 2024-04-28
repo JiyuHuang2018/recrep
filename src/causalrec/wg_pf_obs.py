@@ -145,86 +145,86 @@ if __name__ == '__main__':
             weights = train_data * alpha
             cau = exp_to_imp(train_data)
 
-            tf.compat.v1.reset_default_graph()
-            with tf.compat.v1.Session() as sess:
+            tf.reset_default_graph()
+            sess = tf.InteractiveSession()
 
-                idx_ph = tf.placeholder(tf.int32, M)
-                cau_ph = tf.placeholder(tf.float32, [M, N])
-                sd_ph = tf.placeholder(tf.float32, [M, N])
+            idx_ph = tf.placeholder(tf.int32, M)
+            cau_ph = tf.placeholder(tf.float32, [M, N])
+            sd_ph = tf.placeholder(tf.float32, [M, N])
 
-                U = Gamma(0.3*tf.ones([M, K]), 0.3*tf.ones([M, K]))
-                V = Gamma(0.3*tf.ones([N, K]), 0.3*tf.ones([N, K]))
-                x = Poisson(tf.matmul(U, V, transpose_b=True))
+            U = Gamma(0.3*tf.ones([M, K]), 0.3*tf.ones([M, K]))
+            V = Gamma(0.3*tf.ones([N, K]), 0.3*tf.ones([N, K]))
+            x = Poisson(tf.matmul(U, V, transpose_b=True))
 
-                qU_variables = [tf.Variable(tf.random_uniform([D, K])), \
-                            tf.Variable(tf.random_uniform([D, K]))]
+            qU_variables = [tf.Variable(tf.random_uniform([D, K])), \
+                           tf.Variable(tf.random_uniform([D, K]))]
 
-                qU = PointMass(params=tf.nn.softplus(tf.gather(qU_variables[0], idx_ph)))
-
-
-                qV_variables = [tf.Variable(tf.random_uniform([N, K])), \
-                            tf.Variable(tf.random_uniform([N, K]))]
-
-                qV = PointMass(params=tf.nn.softplus(qV_variables[0]))
-
-                x_ph = tf.placeholder(tf.float32, [M, N])
-
-                optimizer = tf.train.RMSPropOptimizer(5e-5)
-
-                scale_factor = float(D) / M
-
-                inference_U = ed.MAP({U: qU}, \
-                    data={x: x_ph, V: qV})
-                inference_V = ed.MAP({V: qV}, \
-                    data={x: x_ph, U: qU})
-
-                inference_U.initialize(scale={x: scale_factor, U: scale_factor},
-                                    var_list=qU_variables, optimizer=optimizer)
-                inference_V.initialize(scale={x: scale_factor, U: scale_factor},
-                                    var_list=qV_variables, n_iter=n_iter, optimizer=optimizer)
-
-                tf.global_variables_initializer().run()
-
-                loss = np.empty(inference_V.n_iter, dtype=np.float32)
-                
-                for j in range(inference_V.n_iter):
-                    x_batch, idx_batch = next_batch(train_data, M)
-                    cau_batch = cau[idx_batch,:]
-                    weights_batch = weights[idx_batch,:]
-
-                    x_batch = x_batch.todense().astype('int')
-                    cau_batch = cau_batch.todense()
-                    weights_batch = weights_batch.todense()
-                    sd_batch = 1./np.sqrt(1+weights_batch)
-
-                    info_dict = inference_V.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
-                                                    cau_ph: cau_batch, sd_ph: sd_batch})
-                    inference_U.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
-                                                cau_ph: cau_batch, sd_ph: sd_batch})
-
-                    inference_V.print_progress(info_dict)
-
-                    loss[j] = info_dict["loss"]
-
-                V_out = tf.nn.softplus(qV_variables[0]).eval()
-                U_out = tf.nn.softplus(qU_variables[0]).eval()
-                
-                
-
-                
-                # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_U.csv", U_out)
-                # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_V.csv", V_out)
+            qU = PointMass(params=tf.nn.softplus(tf.gather(qU_variables[0], idx_ph)))
 
 
+            qV_variables = [tf.Variable(tf.random_uniform([N, K])), \
+                           tf.Variable(tf.random_uniform([N, K]))]
 
-                pred = sparse.csr_matrix(U_out.dot(V_out.T))
+            qV = PointMass(params=tf.nn.softplus(qV_variables[0]))
 
-                
-                pred = pred.todense()
+            x_ph = tf.placeholder(tf.float32, [M, N])
 
-                all_metric_holders = wg_eval_acc_metrics_update_i(all_metric_holders, \
-                    i, pred, train_data, \
-                    vad_data, test_data, ks, thold)
+            optimizer = tf.train.RMSPropOptimizer(5e-5)
+
+            scale_factor = float(D) / M
+
+            inference_U = ed.MAP({U: qU}, \
+                data={x: x_ph, V: qV})
+            inference_V = ed.MAP({V: qV}, \
+                data={x: x_ph, U: qU})
+
+            inference_U.initialize(scale={x: scale_factor, U: scale_factor},
+                                 var_list=qU_variables, optimizer=optimizer)
+            inference_V.initialize(scale={x: scale_factor, U: scale_factor},
+                                 var_list=qV_variables, n_iter=n_iter, optimizer=optimizer)
+
+            tf.global_variables_initializer().run()
+
+            loss = np.empty(inference_V.n_iter, dtype=np.float32)
+            
+            for j in range(inference_V.n_iter):
+                x_batch, idx_batch = next_batch(train_data, M)
+                cau_batch = cau[idx_batch,:]
+                weights_batch = weights[idx_batch,:]
+
+                x_batch = x_batch.todense().astype('int')
+                cau_batch = cau_batch.todense()
+                weights_batch = weights_batch.todense()
+                sd_batch = 1./np.sqrt(1+weights_batch)
+
+                info_dict = inference_V.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
+                                                  cau_ph: cau_batch, sd_ph: sd_batch})
+                inference_U.update(feed_dict={x_ph: x_batch, idx_ph: idx_batch, \
+                                              cau_ph: cau_batch, sd_ph: sd_batch})
+
+                inference_V.print_progress(info_dict)
+
+                loss[j] = info_dict["loss"]
+
+            V_out = tf.nn.softplus(qV_variables[0]).eval()
+            U_out = tf.nn.softplus(qU_variables[0]).eval()
+            
+            
+
+            
+            # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_U.csv", U_out)
+            # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_V.csv", V_out)
+
+
+
+            pred = sparse.csr_matrix(U_out.dot(V_out.T))
+
+            
+            pred = pred.todense()
+
+            all_metric_holders = wg_eval_acc_metrics_update_i(all_metric_holders, \
+                i, pred, train_data, \
+                vad_data, test_data, ks, thold)
 
     out_df = save_eval_metrics(all_metric_holders, model_name, outdims, all_params, ks)
         
