@@ -20,7 +20,6 @@ import pmf
 
 from scipy import sparse, stats
 from scipy.stats import poisson, norm
-import bottleneck as bn
 
 import argparse
 

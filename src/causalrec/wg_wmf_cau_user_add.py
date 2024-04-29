@@ -23,7 +23,6 @@ from edward.models import Normal, Gamma, Dirichlet, InverseGamma, \
 
 from scipy import sparse, stats
 from scipy.stats import poisson, norm
-import bottleneck as bn
 
 import argparse
 
