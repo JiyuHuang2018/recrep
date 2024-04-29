@@ -453,7 +453,7 @@ if __name__ == '__main__':
                 train_data, \
                 vad_data_tr, vad_data_te, \
                 test_data_tr, test_data_te, \
-                ks, thold)
+                ks, thold,V_out)
 
     out_df = save_eval_metrics(all_metric_holders, model_name, outdims, all_params, ks)
         

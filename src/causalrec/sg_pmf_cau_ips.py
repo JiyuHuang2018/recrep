@@ -345,9 +345,9 @@ if __name__ == '__main__':
             
                 
             # np.savetxt(OUT_DATA_DIR + '/'+ model_name + '_bin'+str(binary)+'_cauk0_'+str(caudim)\
-                +'outK'+str(outdim)+"_nitr"+str(n_iter)+"_batch"+str(M)+\
-                "_thold"+str(thold)+"_pU"+str(args.priorU)+"_pV"+str(args.priorV)+\
-                "_alpha"+str(args.alpha)+"_cas_vadU.csv", U_vadout)
+            #    +'outK'+str(outdim)+"_nitr"+str(n_iter)+"_batch"+str(M)+\
+            #    "_thold"+str(thold)+"_pU"+str(args.priorU)+"_pV"+str(args.priorV)+\
+            #    "_alpha"+str(args.alpha)+"_cas_vadU.csv", U_vadout)
 
 
             
@@ -459,7 +459,7 @@ if __name__ == '__main__':
                 train_data, \
                 vad_data_tr, vad_data_te, \
                 test_data_tr, test_data_te, \
-                ks, thold)
+                ks, thold,V_out)
 
     out_df = save_eval_metrics(all_metric_holders, model_name, outdims, all_params, ks)
         

@@ -44,11 +44,20 @@ def calculate_coverage(recommendations, total_items):
     for recs in recommendations:
         unique_items.update(recs)
     return len(unique_items) / total_items
+
 def binarize_rating(data, cutoff=3, eps=1e-6):
     data.data[data.data <= cutoff] = eps   
     data.data[data.data > cutoff] = 1
     return data
 
+def calculate_coverage_sg(recommendations, total_items):
+    """Calculate the coverage of the recommendation lists."""
+    unique_items = set()
+    for recs in recommendations:
+        # Convert each row of the matrix/array to a tuple and update the set
+        for row in recs:
+            unique_items.update(tuple(row))
+    return len(unique_items) / total_items
 
 def exp_to_imp(data, cutoff=1e-10):
     data_imp = data.copy()
@@ -506,15 +515,16 @@ def sg_eval_acc_metrics_update_i(all_metric_holders, i, \
     novelty_train,novelty_vad,novelty_test, coverage_train,\
     coverage_vad,coverage_test= all_metric_holders
 
-    #recommendations = [np.argsort(-np.dot(U_out[user], V_out.T))[:10] for user in range(U_out.shape[0])]
-    pred_train_dense = pred_train.todense()
-    pred_vad_dense = pred_vad.todense()
-    pred_test_dense = pred_test.todense()
 
-    # Extract top recommendations for each prediction set (assuming top 10)
-    top_n_recs_train = np.argsort(-pred_train_dense, axis=1)[:, :10]
-    top_n_recs_vad = np.argsort(-pred_vad_dense, axis=1)[:, :10]
-    top_n_recs_test = np.argsort(-pred_test_dense, axis=1)[:, :10]
+
+    top_n_recs_train = np.argsort(-pred_train, axis=1)[:, :10]
+    top_n_recs_vad = np.argsort(-pred_vad, axis=1)[:, :10]
+    top_n_recs_test = np.argsort(-pred_test, axis=1)[:, :10]
+
+    # Convert the indices to tuples to ensure they are hashable and can be used in sets
+    top_n_recs_train = [tuple(row.tolist()) for row in top_n_recs_train]
+    top_n_recs_vad = [tuple(row.tolist()) for row in top_n_recs_vad]
+    top_n_recs_test = [tuple(row.tolist()) for row in top_n_recs_test]
 
     # Calculate diversity
     diversity_train[i] = calculate_diversity(top_n_recs_train, V_out)
@@ -531,9 +541,9 @@ def sg_eval_acc_metrics_update_i(all_metric_holders, i, \
 
     # Calculate coverage
     total_items = train_data.shape[1]
-    coverage_train[i] = calculate_coverage(top_n_recs_train, total_items)
-    coverage_vad[i] = calculate_coverage(top_n_recs_vad, total_items)
-    coverage_test[i] = calculate_coverage(top_n_recs_test, total_items)
+    coverage_train[i] = calculate_coverage_sg(top_n_recs_train, total_items)
+    coverage_vad[i] = calculate_coverage_sg(top_n_recs_vad, total_items)
+    coverage_test[i] = calculate_coverage_sg(top_n_recs_test, total_items)
     
     train_mse_pos[i], train_mse_neg[i], train_mse_all[i] = \
         mse(train_data.todense(), pred_train)
