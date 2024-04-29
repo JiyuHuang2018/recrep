@@ -6,7 +6,7 @@ import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-MODELCODEPY_SWEEP="sg_wmf_obs sg_wmf_cau_ips sg_wmf_cau_const_add sg_wmf_cau_user_add sg_pmf_obs sg_pmf_cau_ips sg_pmf_cau_const_add sg_pmf_cau_user_add sg_pf_obs sg_pf_cau_ips sg_pf_cau_const_add sg_pf_cau_user_add"
+MODELCODEPY_SWEEP=["sg_wmf_obs","sg_wmf_cau_ips","sg_wmf_cau_const_add","sg_wmf_cau_user_add","sg_pmf_obs","sg_pmf_cau_ips","sg_pmf_cau_const_add","sg_pmf_cau_user_add","sg_pf_obs","sg_pf_cau_ips","sg_pf_cau_const_add","sg_pf_cau_user_add"]
 DIR_PREFIX = "dat/proc/"
 DATADIR_SWEEP = ["ml_sg/"]
 ODIR_PREFIX = "out/"
