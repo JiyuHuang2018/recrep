@@ -258,7 +258,7 @@ if __name__ == '__main__':
             pred = pred.todense()
 
             all_metric_holders = wg_eval_acc_metrics_update_i(all_metric_holders, \
-                i, pred, train_data, \
+                i,V_out,U_out,n_users,n_items,pred, train_data, \
                 vad_data, test_data, ks, thold)
 
     out_df = save_eval_metrics(all_metric_holders, model_name, outdims, all_params, ks)

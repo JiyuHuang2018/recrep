@@ -13,6 +13,37 @@ prec_at_k_xpred, ric_rank_xpred, mean_perc_rank_xpred, \
 normalized_dcg_at_k_nonbinary_xpred, log_cond_normal_prob_metrics, mse, mae, avg_col_mse, avg_col_mae
 
 
+def cosine_similarity(v1, v2):
+    """Compute the cosine similarity between two vectors."""
+    dot_product = np.dot(v1, v2)
+    norm_v1 = np.linalg.norm(v1)
+    norm_v2 = np.linalg.norm(v2)
+    return dot_product / (norm_v1 * norm_v2)
+
+def calculate_diversity(recommendations, item_features):
+    """Calculate the diversity of the recommendation lists."""
+    diversity_scores = []
+    for recs in recommendations:
+        if len(recs) > 1:
+            sims = [cosine_similarity(item_features[i], item_features[j]) for i in recs for j in recs if i != j]
+            diversity_score = 1 - np.mean(sims)  # Assuming sims is not empty
+            diversity_scores.append(diversity_score)
+    return np.mean(diversity_scores)
+
+def calculate_novelty(recommendations, item_popularity):
+    """Calculate the novelty of the recommendation lists."""
+    novelty_scores = []
+    for recs in recommendations:
+        novelty_score = np.mean([-np.log2(item_popularity[item]) for item in recs if item in item_popularity])
+        novelty_scores.append(novelty_score)
+    return np.mean(novelty_scores)
+
+def calculate_coverage(recommendations, total_items):
+    """Calculate the coverage of the recommendation lists."""
+    unique_items = set()
+    for recs in recommendations:
+        unique_items.update(recs)
+    return len(unique_items) / total_items
 def binarize_rating(data, cutoff=3, eps=1e-6):
     data.data[data.data <= cutoff] = eps   
     data.data[data.data > cutoff] = 1
@@ -43,7 +74,7 @@ def subsample_negatives(data, full_data=None, random_state=0, verbose=False):
 
     np.random.seed(random_state)
 
-    for u in xrange(n_users):
+    for u in range(n_users):
         p = np.ones(n_items, dtype='float32')
         p[full_data[u].nonzero()[1]] = 0
         p /= p.sum()
@@ -187,7 +218,19 @@ def create_metric_holders(outdims, ks):
         np.zeros(len(outdims)), np.zeros(len(outdims)), np.zeros(len(outdims))
     train_mean_perc_rank, vad_mean_perc_rank, test_mean_perc_rank = \
         np.zeros(len(outdims)), np.zeros(len(outdims)), np.zeros(len(outdims))
-
+    diversity_scores = np.zeros(len(outdims))
+    novelty_scores = np.zeros(len(outdims))
+    coverage_scores = np.zeros(len(outdims))
+    
+    diversity_train= np.zeros(len(outdims))
+    diversity_vad= np.zeros(len(outdims))
+    diversity_test= np.zeros(len(outdims))
+    novelty_train= np.zeros(len(outdims))
+    novelty_vad= np.zeros(len(outdims))
+    novelty_test= np.zeros(len(outdims)) 
+    coverage_train= np.zeros(len(outdims))
+    coverage_vad= np.zeros(len(outdims))
+    coverage_test= np.zeros(len(outdims))
     return train_ndcg, vad_ndcg, test_ndcg, \
         train_mse_pos, vad_mse_pos, test_mse_pos, \
         train_mse_neg, vad_mse_neg, test_mse_neg, \
@@ -213,10 +256,14 @@ def create_metric_holders(outdims, ks):
         train_preck, vad_preck, test_preck, \
         train_ric_rank, vad_ric_rank, test_ric_rank, \
         train_mean_perc_rank, vad_mean_perc_rank, test_mean_perc_rank, \
-        test_mae, test_mse
+        test_mae, test_mse,diversity_scores, novelty_scores, coverage_scores,\
+        diversity_train,diversity_vad,diversity_test,\
+        novelty_train,novelty_vad,novelty_test, coverage_train,\
+        coverage_vad,coverage_test
+        
 
 
-def wg_eval_acc_metrics_update_i(all_metric_holders, i, pred, train_data, \
+def wg_eval_acc_metrics_update_i(all_metric_holders, i,V_out,U_out, n_users,n_items,pred, train_data, \
     vad_data, test_data, ks, thold):
         # pred must be sparse matrix
     train_ndcg, vad_ndcg, test_ndcg, \
@@ -244,8 +291,8 @@ def wg_eval_acc_metrics_update_i(all_metric_holders, i, pred, train_data, \
     train_preck, vad_preck, test_preck, \
     train_ric_rank, vad_ric_rank, test_ric_rank, \
     train_mean_perc_rank, vad_mean_perc_rank, test_mean_perc_rank, \
-    test_mae, test_mse = all_metric_holders
-
+    test_mae, test_mse ,diversity_scores, novelty_scores, coverage_scores = all_metric_holders
+    
     train_mse_pos[i], train_mse_neg[i], train_mse_all[i] = \
         mse(train_data.todense(), pred)
 
@@ -281,23 +328,29 @@ def wg_eval_acc_metrics_update_i(all_metric_holders, i, pred, train_data, \
 
     test_avg_col_mae_pos[i], test_avg_col_mae_neg[i], test_avg_col_mae_all[i] = \
         avg_col_mae(test_data.todense(), pred)
+    recommendations = [np.argsort(-np.dot(U_out[user], V_out.T))[:10] for user in range(U_out.shape[0])]
+    item_popularity = {i: np.sum(train_data[:, i].toarray() > 0) / float(n_users) for i in range(n_items)}
+    total_items = n_items
+    diversity_scores[i] = calculate_diversity(recommendations, V_out)
+    novelty_scores[i] = calculate_novelty(recommendations, item_popularity)
+    
+    coverage_scores[i] = calculate_coverage(recommendations, total_items)
 
+    #print("train mse pos neg all", train_mse_pos[i], train_mse_neg[i], train_mse_all[i])
+    #print("vad mse pos neg all", vad_mse_pos[i], vad_mse_neg[i], vad_mse_all[i])
+    #print("test mse pos neg all", test_mse_pos[i], test_mse_neg[i], test_mse_all[i])
 
-    print("train mse pos neg all", train_mse_pos[i], train_mse_neg[i], train_mse_all[i])
-    print("vad mse pos neg all", vad_mse_pos[i], vad_mse_neg[i], vad_mse_all[i])
-    print("test mse pos neg all", test_mse_pos[i], test_mse_neg[i], test_mse_all[i])
+    #print("train mae pos neg all", train_mae_pos[i], train_mae_neg[i], train_mae_all[i])
+    #print("vad mae pos neg all", vad_mae_pos[i], vad_mae_neg[i], vad_mae_all[i])
+    #print("test mae pos neg all", test_mae_pos[i], test_mae_neg[i], test_mae_all[i])
 
-    print("train mae pos neg all", train_mae_pos[i], train_mae_neg[i], train_mae_all[i])
-    print("vad mae pos neg all", vad_mae_pos[i], vad_mae_neg[i], vad_mae_all[i])
-    print("test mae pos neg all", test_mae_pos[i], test_mae_neg[i], test_mae_all[i])
+    #print("train avg_col_mse pos neg all", train_avg_col_mse_pos[i], train_avg_col_mse_neg[i], train_avg_col_mse_all[i])
+    #print("vad avg_col_mse pos neg all", vad_avg_col_mse_pos[i], vad_avg_col_mse_neg[i], vad_avg_col_mse_all[i])
+    #print("test avg_col_mse pos neg all", test_avg_col_mse_pos[i], test_avg_col_mse_neg[i], test_avg_col_mse_all[i])
 
-    print("train avg_col_mse pos neg all", train_avg_col_mse_pos[i], train_avg_col_mse_neg[i], train_avg_col_mse_all[i])
-    print("vad avg_col_mse pos neg all", vad_avg_col_mse_pos[i], vad_avg_col_mse_neg[i], vad_avg_col_mse_all[i])
-    print("test avg_col_mse pos neg all", test_avg_col_mse_pos[i], test_avg_col_mse_neg[i], test_avg_col_mse_all[i])
-
-    print("train avg_col_mae pos neg all", train_avg_col_mae_pos[i], train_avg_col_mae_neg[i], train_avg_col_mae_all[i])
-    print("vad avg_col_mae pos neg all", vad_avg_col_mae_pos[i], vad_avg_col_mae_neg[i], vad_avg_col_mae_all[i])
-    print("test avg_col_mae pos neg all", test_avg_col_mae_pos[i], test_avg_col_mae_neg[i], test_avg_col_mae_all[i])
+    #print("train avg_col_mae pos neg all", train_avg_col_mae_pos[i], train_avg_col_mae_neg[i], train_avg_col_mae_all[i])
+    #print("vad avg_col_mae pos neg all", vad_avg_col_mae_pos[i], vad_avg_col_mae_neg[i], vad_avg_col_mae_all[i])
+    #print("test avg_col_mae pos neg all", test_avg_col_mae_pos[i], test_avg_col_mae_neg[i], test_avg_col_mae_all[i])
 
     train_poisson_pos_plp[i], train_poisson_neg_plp[i], train_poisson_all_plp[i] = \
         log_cond_poisson_prob_metrics(train_data.todense(), pred)
@@ -317,13 +370,13 @@ def wg_eval_acc_metrics_update_i(all_metric_holders, i, pred, train_data, \
     test_normal_pos_plp[i], test_normal_neg_plp[i], test_normal_all_plp[i] = \
         log_cond_normal_prob_metrics(test_data.todense(), pred)
 
-    print("train poisson pos neg all", train_poisson_pos_plp[i], train_poisson_neg_plp[i], train_poisson_all_plp[i])
-    print("vad poisson pos neg all", vad_poisson_pos_plp[i], vad_poisson_neg_plp[i], vad_poisson_all_plp[i])
-    print("test poisson pos neg all", test_poisson_pos_plp[i], test_poisson_neg_plp[i], test_poisson_all_plp[i])
+    #print("train poisson pos neg all", train_poisson_pos_plp[i], train_poisson_neg_plp[i], train_poisson_all_plp[i])
+    #print("vad poisson pos neg all", vad_poisson_pos_plp[i], vad_poisson_neg_plp[i], vad_poisson_all_plp[i])
+    #print("test poisson pos neg all", test_poisson_pos_plp[i], test_poisson_neg_plp[i], test_poisson_all_plp[i])
 
-    print("train normal pos neg all", train_normal_pos_plp[i], train_normal_neg_plp[i], train_normal_all_plp[i])
-    print("vad normal pos neg all", vad_normal_pos_plp[i], vad_normal_neg_plp[i], vad_normal_all_plp[i])
-    print("test normal pos neg all", test_normal_pos_plp[i], test_normal_neg_plp[i], test_normal_all_plp[i])
+    #print("train normal pos neg all", train_normal_pos_plp[i], train_normal_neg_plp[i], train_normal_all_plp[i])
+    #print("vad normal pos neg all", vad_normal_pos_plp[i], vad_normal_neg_plp[i], vad_normal_all_plp[i])
+    #print("test normal pos neg all", test_normal_pos_plp[i], test_normal_neg_plp[i], test_normal_all_plp[i])
 
     
     
@@ -363,23 +416,23 @@ def wg_eval_acc_metrics_update_i(all_metric_holders, i, pred, train_data, \
         mean_perc_rank_xpred(train_data, vad_data, pred), \
         mean_perc_rank_xpred(train_data, test_data, pred, vad_data = vad_data)
     
-    print("ndcg train vad test", train_ndcg[i], vad_ndcg[i], test_ndcg[i])
+    #print("ndcg train vad test", train_ndcg[i], vad_ndcg[i], test_ndcg[i])
     
-    print("recall train vad test", train_recallk[i], vad_recallk[i], test_recallk[i])
+    #print("recall train vad test", train_recallk[i], vad_recallk[i], test_recallk[i])
     
-    print("map train vad test", train_mapk[i], vad_mapk[i], test_mapk[i])            
+    #print("map train vad test", train_mapk[i], vad_mapk[i], test_mapk[i])            
 
-    print("prec train vad test", train_preck[i], vad_preck[i], test_preck[i])
+    #print("prec train vad test", train_preck[i], vad_preck[i], test_preck[i])
 
-    print("ric_rank train vad test", train_ric_rank[i], vad_ric_rank[i], test_ric_rank[i])
+    #print("ric_rank train vad test", train_ric_rank[i], vad_ric_rank[i], test_ric_rank[i])
     
-    print("mean_perc_rank train vad test", train_mean_perc_rank[i], vad_mean_perc_rank[i], test_mean_perc_rank[i])
+    #print("mean_perc_rank train vad test", train_mean_perc_rank[i], vad_mean_perc_rank[i], test_mean_perc_rank[i])
         
     test_mse[i] = np.mean(np.square(test_data[test_data.nonzero()] - pred[test_data.nonzero()]))
     test_mae[i] = np.mean(np.abs(test_data[test_data.nonzero()] - pred[test_data.nonzero()]))
   
-    print('mse', test_mse[i])
-    print('mae', test_mae[i])
+    #print('mse', test_mse[i])
+    #print('mae', test_mae[i])
 
 
     return train_ndcg, vad_ndcg, test_ndcg, \
@@ -407,7 +460,7 @@ def wg_eval_acc_metrics_update_i(all_metric_holders, i, pred, train_data, \
         train_preck, vad_preck, test_preck, \
         train_ric_rank, vad_ric_rank, test_ric_rank, \
         train_mean_perc_rank, vad_mean_perc_rank, test_mean_perc_rank, \
-        test_mae, test_mse
+        test_mae, test_mse,diversity_scores, novelty_scores, coverage_scores
 
 
 def sg_eval_acc_metrics_update_i(all_metric_holders, i, \
@@ -415,8 +468,7 @@ def sg_eval_acc_metrics_update_i(all_metric_holders, i, \
     train_data, \
     vad_data_tr, vad_data_te, \
     test_data_tr, test_data_te, \
-    ks, thold):
-        # pred must be sparse matrix
+    ks, thold,V_out):
 
     train_ndcg, vad_ndcg, test_ndcg, \
     train_mse_pos, vad_mse_pos, test_mse_pos, \
@@ -443,9 +495,39 @@ def sg_eval_acc_metrics_update_i(all_metric_holders, i, \
     train_preck, vad_preck, test_preck, \
     train_ric_rank, vad_ric_rank, test_ric_rank, \
     train_mean_perc_rank, vad_mean_perc_rank, test_mean_perc_rank, \
-    test_mae, test_mse = all_metric_holders
+    test_mae, test_mse ,diversity_train,diversity_vad,diversity_test,\
+    novelty_train,novelty_vad,novelty_test, coverage_train,\
+    coverage_vad,coverage_test= all_metric_holders
 
+    #recommendations = [np.argsort(-np.dot(U_out[user], V_out.T))[:10] for user in range(U_out.shape[0])]
+    pred_train_dense = pred_train.todense()
+    pred_vad_dense = pred_vad.todense()
+    pred_test_dense = pred_test.todense()
 
+    # Extract top recommendations for each prediction set (assuming top 10)
+    top_n_recs_train = np.argsort(-pred_train_dense, axis=1)[:, :10]
+    top_n_recs_vad = np.argsort(-pred_vad_dense, axis=1)[:, :10]
+    top_n_recs_test = np.argsort(-pred_test_dense, axis=1)[:, :10]
+
+    # Calculate diversity
+    diversity_train[i] = calculate_diversity(top_n_recs_train, V_out)
+    diversity_vad[i] = calculate_diversity(top_n_recs_vad, V_out)
+    diversity_test[i] = calculate_diversity(top_n_recs_test, V_out)
+
+    # Calculate item popularity based on the training data
+    item_popularity = np.array(train_data.sum(axis=0)).flatten()
+
+    # Calculate novelty
+    novelty_train[i] = calculate_novelty(top_n_recs_train, item_popularity)
+    novelty_vad[i] = calculate_novelty(top_n_recs_vad, item_popularity)
+    novelty_test[i] = calculate_novelty(top_n_recs_test, item_popularity)
+
+    # Calculate coverage
+    total_items = train_data.shape[1]
+    coverage_train[i] = calculate_coverage(top_n_recs_train, total_items)
+    coverage_vad[i] = calculate_coverage(top_n_recs_vad, total_items)
+    coverage_test[i] = calculate_coverage(top_n_recs_test, total_items)
+    
     train_mse_pos[i], train_mse_neg[i], train_mse_all[i] = \
         mse(train_data.todense(), pred_train)
 
@@ -607,7 +689,9 @@ def sg_eval_acc_metrics_update_i(all_metric_holders, i, \
         train_preck, vad_preck, test_preck, \
         train_ric_rank, vad_ric_rank, test_ric_rank, \
         train_mean_perc_rank, vad_mean_perc_rank, test_mean_perc_rank, \
-        test_mae, test_mse
+        test_mae, test_mse,diversity_train,diversity_vad,diversity_test,\
+        novelty_train,novelty_vad,novelty_test, coverage_train,\
+        coverage_vad,coverage_test
 
 def save_eval_metrics(all_metric_holders, model_name, outdims, all_params, ks):
     DATA_DIR, CAUSEFIT_DIR, OUT_DATA_DIR, \
@@ -640,7 +724,10 @@ def save_eval_metrics(all_metric_holders, model_name, outdims, all_params, ks):
     train_preck, vad_preck, test_preck, \
     train_ric_rank, vad_ric_rank, test_ric_rank, \
     train_mean_perc_rank, vad_mean_perc_rank, test_mean_perc_rank, \
-    test_mae, test_mse = all_metric_holders
+    test_mae, test_mse ,diversity_scores, novelty_scores, coverage_scores,\
+    diversity_train,diversity_vad,diversity_test,\
+    novelty_train,novelty_vad,novelty_test, coverage_train,\
+    coverage_vad,coverage_test= all_metric_holders
 
     out_df = pd.DataFrame({"dim": outdims, \
                     "train_ndcg": train_ndcg, \
@@ -717,7 +804,19 @@ def save_eval_metrics(all_metric_holders, model_name, outdims, all_params, ks):
                     "binary": np.repeat(binary, len(outdims)), \
                     "niter": np.repeat(n_iter, len(outdims)), \
                     "batch": np.repeat(M, len(outdims)), \
-                    "thold": np.repeat(int(thold+1), len(outdims))})
+                    "thold": np.repeat(int(thold+1), len(outdims)),\
+                    "diversity":diversity_scores,\
+                    "novelty":novelty_scores, \
+                    "coverage":coverage_scores,\
+                    "diversity_train": diversity_train,\
+                    "diversity_vad":diversity_vad,\
+                    "diversity_test":diversity_test,\
+                    "novelty_train":novelty_train,\
+                    "novelty_vad":novelty_vad,\
+                    "novelty_test":novelty_test,\
+                    "coverage_train":coverage_train,\
+                    "coverage_vad":coverage_vad,\
+                    "coverage_test":coverage_test})
 # last line to avoid thold = 0.5 will turn display as 1 so filename not messed up
 
     for i, k in enumerate(ks):
@@ -737,7 +836,7 @@ def save_eval_metrics(all_metric_holders, model_name, outdims, all_params, ks):
     return out_df
 
 
-def wg_eval_acc_metrics_update_i_nomeanperc(all_metric_holders, i, pred, train_data, \
+def wg_eval_acc_metrics_update_i_nomeanperc(all_metric_holders, i,V_out,U_out,n_users,n_items, pred, train_data, \
     vad_data, test_data, ks, thold):
         # pred must be sparse matrix
 
@@ -766,9 +865,15 @@ def wg_eval_acc_metrics_update_i_nomeanperc(all_metric_holders, i, pred, train_d
     train_preck, vad_preck, test_preck, \
     train_ric_rank, vad_ric_rank, test_ric_rank, \
     train_mean_perc_rank, vad_mean_perc_rank, test_mean_perc_rank, \
-    test_mae, test_mse = all_metric_holders
-
-
+    test_mae, test_mse ,diversity_scores, novelty_scores, coverage_scores = all_metric_holders
+    recommendations = [np.argsort(-np.dot(U_out[user], V_out.T))[:10] for user in range(U_out.shape[0])]
+    item_popularity = {i: np.sum(train_data[:, i].toarray() > 0) / float(n_users) for i in range(n_items)}
+    total_items = n_items
+    diversity_scores[i] = calculate_diversity(recommendations, V_out)
+    print("got a diversity: ",diversity_scores[i])
+    novelty_scores[i] = calculate_novelty(recommendations, item_popularity)
+    
+    coverage_scores[i] = calculate_coverage(recommendations, total_items)
     train_mse_pos[i], train_mse_neg[i], train_mse_all[i] = \
         mse(train_data.todense(), pred)
 
@@ -926,5 +1031,4 @@ def wg_eval_acc_metrics_update_i_nomeanperc(all_metric_holders, i, pred, train_d
         train_preck, vad_preck, test_preck, \
         train_ric_rank, vad_ric_rank, test_ric_rank, \
         train_mean_perc_rank, vad_mean_perc_rank, test_mean_perc_rank, \
-        test_mae, test_mse
-
+        test_mae, test_mse ,diversity_scores, novelty_scores, coverage_scores

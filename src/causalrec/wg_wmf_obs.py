@@ -31,7 +31,7 @@ import argparse
 from utils import binarize_rating, exp_to_imp, binarize_spmat, \
 next_batch, create_argparser, set_params, load_prefit_pfcau, \
 create_metric_holders, wg_eval_acc_metrics_update_i, \
-sg_eval_acc_metrics_update_i, save_eval_metrics
+sg_eval_acc_metrics_update_i, save_eval_metrics, cosine_similarity, calculate_coverage,calculate_diversity,calculate_novelty
 
 
 from rec_eval_xpred import log_cond_normal_prob_metrics
@@ -195,6 +195,8 @@ if __name__ == '__main__':
 
 
             old_vad_ll = -1e16
+            item_popularity = {i: np.sum(train_data[:, i].toarray() > 0) / float(n_users) for i in range(n_items)}
+            total_items = n_items
             
             for j in range(inference_V.n_iter):
                 if j % 100 == 0:
@@ -231,10 +233,7 @@ if __name__ == '__main__':
 
             V_out = qV_variables[0].eval()
             U_out = qU_variables[0].eval()
-            
-            
-
-            
+      
             # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_U.csv", U_out)
             # np.savetxt(OUT_DATA_DIR + '/'+ out_filename + "_cas_V.csv", V_out)
 
@@ -244,9 +243,9 @@ if __name__ == '__main__':
             
             
             pred = pred.todense()
-
+            print("update metric onces")
             all_metric_holders = wg_eval_acc_metrics_update_i(all_metric_holders, \
-                i, pred, train_data, \
+                i,V_out,U_out,n_users,n_items,pred, train_data, \
                 vad_data, test_data, ks, thold)
 
     out_df = save_eval_metrics(all_metric_holders, model_name, outdims, all_params, ks)
