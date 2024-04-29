@@ -356,7 +356,7 @@ def subsample_negatives(data, full_data=None, random_state=0, verbose=False):
 
     np.random.seed(random_state)
 
-    for u in xrange(n_users):
+    for u in range(n_users):
         p = np.ones(n_items, dtype='float32')
         p[full_data[u].nonzero()[1]] = 0
         p /= p.sum()

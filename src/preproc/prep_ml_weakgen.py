@@ -1,4 +1,3 @@
-
 # coding: utf-8
 
 # In[1]:
@@ -53,24 +52,22 @@ from scipy import sparse, stats
 # In[3]:
 
 
-DATA_DIR = 'dat/raw/Webscope_R3/'
+DATA_DIR = 'dat/raw/movielens/'
 
 
 # In[4]:
 
 
-OUT_DATA_DIR = 'dat/proc/R3_wg/'
+OUT_DATA_DIR = 'dat/proc/ml_wg/'
 
 
 # ## R3
 
 # In[5]:
-
-tr_vd_data = pd.read_csv(os.path.join(DATA_DIR, 'ydata-ymusic-rating-study-v1_0-train.txt'), sep="\t", header=None, 
-                       names=['userId', 'songId', 'rating'],engine="python")
-test_data = pd.read_csv(os.path.join(DATA_DIR, 'ydata-ymusic-rating-study-v1_0-test.txt'), sep="\t", header=None, 
-                       names=['userId', 'songId', 'rating'],engine="python")
-
+raw_file_path = os.path.join(DATA_DIR, 'train_data.csv')
+test_file_path = os.path.join(DATA_DIR, 'test_data.csv')
+tr_vd_data = pd.read_csv(raw_file_path,usecols=['userId', 'movieId', 'rating'])
+test_data = pd.read_csv(test_file_path,usecols=['userId', 'movieId', 'rating'])
 
 # In[6]:
 
@@ -128,14 +125,14 @@ def get_count(tp, id):
 
 
 user_activity = get_count(tr_vd_data, 'userId')
-item_popularity = get_count(tr_vd_data, 'songId')
+item_popularity = get_count(tr_vd_data, 'movieId')
 
 
 # In[11]:
 
-
-unique_uid = user_activity.index +1
-unique_sid = item_popularity.index +1
+combined_data = pd.concat([tr_vd_data, test_data])
+unique_uid = combined_data['userId'].unique()
+unique_sid = combined_data['movieId'].unique()
 
 
 # In[12]:
@@ -164,7 +161,7 @@ user2id = dict((uid, i) for (i, uid) in enumerate(unique_uid))
 # for the test set, only keep the users/items from the training set
 
 test_data = test_data.loc[test_data['userId'].isin(unique_uid)]
-test_data = test_data.loc[test_data['songId'].isin(unique_sid)]
+test_data = test_data.loc[test_data['movieId'].isin(unique_sid)]
 
 
 # In[16]:
@@ -186,9 +183,10 @@ with open(os.path.join(OUT_DATA_DIR, 'unique_sid.txt'), 'w') as f:
 
 def numerize(tp):
     uid = list(map(lambda x: user2id[x], tp['userId']))
-    sid = list(map(lambda x: song2id[x], tp['songId']))
-    tp.loc[:, 'uid'] = uid
-    tp.loc[:, 'sid'] = sid
+    sid = list(map(lambda x: song2id[x], tp['movieId']))
+    tp = tp.copy()
+    tp['uid'] = uid
+    tp['sid'] = sid
     return tp[['uid', 'sid', 'rating']]
 
 
