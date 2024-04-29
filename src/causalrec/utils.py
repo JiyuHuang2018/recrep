@@ -291,7 +291,10 @@ def wg_eval_acc_metrics_update_i(all_metric_holders, i,V_out,U_out, n_users,n_it
     train_preck, vad_preck, test_preck, \
     train_ric_rank, vad_ric_rank, test_ric_rank, \
     train_mean_perc_rank, vad_mean_perc_rank, test_mean_perc_rank, \
-    test_mae, test_mse ,diversity_scores, novelty_scores, coverage_scores = all_metric_holders
+    test_mae, test_mse ,diversity_scores, novelty_scores, coverage_scores,\
+    diversity_train,diversity_vad,diversity_test,\
+    novelty_train,novelty_vad,novelty_test, coverage_train,\
+    coverage_vad,coverage_test = all_metric_holders
     
     train_mse_pos[i], train_mse_neg[i], train_mse_all[i] = \
         mse(train_data.todense(), pred)
@@ -460,7 +463,10 @@ def wg_eval_acc_metrics_update_i(all_metric_holders, i,V_out,U_out, n_users,n_it
         train_preck, vad_preck, test_preck, \
         train_ric_rank, vad_ric_rank, test_ric_rank, \
         train_mean_perc_rank, vad_mean_perc_rank, test_mean_perc_rank, \
-        test_mae, test_mse,diversity_scores, novelty_scores, coverage_scores
+        test_mae, test_mse,diversity_scores, novelty_scores, coverage_scores,\
+        diversity_train,diversity_vad,diversity_test,\
+        novelty_train,novelty_vad,novelty_test, coverage_train,\
+        coverage_vad,coverage_test
 
 
 def sg_eval_acc_metrics_update_i(all_metric_holders, i, \
@@ -495,7 +501,8 @@ def sg_eval_acc_metrics_update_i(all_metric_holders, i, \
     train_preck, vad_preck, test_preck, \
     train_ric_rank, vad_ric_rank, test_ric_rank, \
     train_mean_perc_rank, vad_mean_perc_rank, test_mean_perc_rank, \
-    test_mae, test_mse ,diversity_train,diversity_vad,diversity_test,\
+    test_mae, test_mse ,diversity_scores, novelty_scores, coverage_scores,\
+    diversity_train,diversity_vad,diversity_test,\
     novelty_train,novelty_vad,novelty_test, coverage_train,\
     coverage_vad,coverage_test= all_metric_holders
 
@@ -689,7 +696,8 @@ def sg_eval_acc_metrics_update_i(all_metric_holders, i, \
         train_preck, vad_preck, test_preck, \
         train_ric_rank, vad_ric_rank, test_ric_rank, \
         train_mean_perc_rank, vad_mean_perc_rank, test_mean_perc_rank, \
-        test_mae, test_mse,diversity_train,diversity_vad,diversity_test,\
+        test_mae, test_mse,diversity_scores, novelty_scores, coverage_scores,\
+        diversity_train,diversity_vad,diversity_test,\
         novelty_train,novelty_vad,novelty_test, coverage_train,\
         coverage_vad,coverage_test
 
@@ -865,7 +873,10 @@ def wg_eval_acc_metrics_update_i_nomeanperc(all_metric_holders, i,V_out,U_out,n_
     train_preck, vad_preck, test_preck, \
     train_ric_rank, vad_ric_rank, test_ric_rank, \
     train_mean_perc_rank, vad_mean_perc_rank, test_mean_perc_rank, \
-    test_mae, test_mse ,diversity_scores, novelty_scores, coverage_scores = all_metric_holders
+    test_mae, test_mse ,diversity_scores, novelty_scores, coverage_scores,\
+    diversity_train,diversity_vad,diversity_test,\
+    novelty_train,novelty_vad,novelty_test, coverage_train,\
+    coverage_vad,coverage_test = all_metric_holders
     recommendations = [np.argsort(-np.dot(U_out[user], V_out.T))[:10] for user in range(U_out.shape[0])]
     item_popularity = {i: np.sum(train_data[:, i].toarray() > 0) / float(n_users) for i in range(n_items)}
     total_items = n_items
@@ -1031,4 +1042,7 @@ def wg_eval_acc_metrics_update_i_nomeanperc(all_metric_holders, i,V_out,U_out,n_
         train_preck, vad_preck, test_preck, \
         train_ric_rank, vad_ric_rank, test_ric_rank, \
         train_mean_perc_rank, vad_mean_perc_rank, test_mean_perc_rank, \
-        test_mae, test_mse ,diversity_scores, novelty_scores, coverage_scores
+        test_mae, test_mse ,diversity_scores, novelty_scores, coverage_scores,\
+        diversity_train,diversity_vad,diversity_test,\
+        novelty_train,novelty_vad,novelty_test, coverage_train,\
+        coverage_vad,coverage_test
