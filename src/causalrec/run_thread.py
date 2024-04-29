@@ -5,16 +5,16 @@ from queue import Queue
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-
-MODELCODEPY_SWEEP="sg_wmf_obs sg_wmf_cau_ips sg_wmf_cau_const_add sg_wmf_cau_user_add sg_pmf_obs sg_pmf_cau_ips sg_pmf_cau_const_add sg_pmf_cau_user_add sg_pf_obs sg_pf_cau_ips sg_pf_cau_const_add sg_pf_cau_user_add"
+#"sg_wmf_obs", "sg_wmf_cau_ips", "sg_wmf_cau_const_add", "sg_wmf_cau_user_add", "sg_pmf_obs", "sg_pmf_cau_ips", "sg_pmf_cau_const_add", "sg_pmf_cau_user_add", "sg_pf_obs",
+MODELCODEPY_SWEEP=["sg_pf_cau_ips", "sg_pf_cau_const_add", "sg_pf_cau_user_add"]
 DIR_PREFIX = "dat/proc/"
 DATADIR_SWEEP = ["R3_sg/"]
 ODIR_PREFIX = "out/"
 LOCALFITDIR_SWEEP = ["R3_sg_Afit/"]
 OUTDIR_SWEEP = ["R3_sg_Yfit/"]
-OUTDIM_SWEEP = [5, 10, 20, 50]
-CAUDIM_SWEEP = [1, 2, 5, 10, 20, 50]
-THOLD_SWEEP = [2, 3]
+OUTDIM_SWEEP = [20]
+CAUDIM_SWEEP = [20]
+THOLD_SWEEP = [2]
 BATCHSIZE_SWEEP = [100]
 NITER_SWEEP = [500]
 PRIORU_SWEEP = [1, 10]

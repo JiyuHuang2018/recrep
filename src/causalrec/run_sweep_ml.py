@@ -6,14 +6,14 @@ import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-MODELCODEPY_SWEEP = ["wg_wmf_obs","wg_wmf_cau_ips","wg_wmf_cau_const_add","wg_wmf_cau_user_add","wg_pmf_obs","wg_pmf_cau_ips","wg_pmf_cau_const_add","wg_pmf_cau_user_add","wg_pf_obs","wg_pf_cau_ips","wg_pf_cau_const_add","wg_pf_cau_user_add"]
+MODELCODEPY_SWEEP = ["wg_wmf_cau_ips","wg_wmf_cau_const_add","wg_wmf_cau_user_add","wg_pmf_obs"]
 DIR_PREFIX = "dat/proc/"
-DATADIR_SWEEP = ["ml_sg/"]
+DATADIR_SWEEP = ["ml_wg/"]
 ODIR_PREFIX = "out/"
-LOCALFITDIR_SWEEP = ["ml_sg_Afit/"]
-OUTDIR_SWEEP = ["ml_sg_Yfit/"]
-OUTDIM_SWEEP = [5, 10, 20, 50]
-CAUDIM_SWEEP = [1, 2, 5, 10, 20, 50]
+LOCALFITDIR_SWEEP = ["ml_wg_Afit/"]
+OUTDIR_SWEEP = ["ml_wg_Yfit/"]
+OUTDIM_SWEEP = [ 20]
+CAUDIM_SWEEP = [10, 20]
 THOLD_SWEEP = [2, 3]
 BATCHSIZE_SWEEP = [100]
 NITER_SWEEP = [500]
